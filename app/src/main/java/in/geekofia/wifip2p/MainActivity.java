@@ -1,7 +1,10 @@
 package in.geekofia.wifip2p;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -19,7 +22,13 @@ public class MainActivity extends AppCompatActivity {
     ListView listPeers;
     TextView readMessages, connectionStats;
     EditText writeMessage;
+
     WifiManager mWifiManager;
+    WifiP2pManager mWifiP2pManager;
+    WifiP2pManager.Channel mChannel;
+
+    BroadcastReceiver mReceiver;
+    IntentFilter mFilter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,5 +81,38 @@ public class MainActivity extends AppCompatActivity {
         connectionStats = (TextView) findViewById(R.id.connectionStatus);
 
         writeMessage = (EditText) findViewById(R.id.writeMessage);
+
+        mWifiP2pManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
+        mChannel = mWifiP2pManager.initialize(this, getMainLooper(), null);
+
+        mReceiver = new WiFiDirectBroadcastReceiver(mWifiP2pManager, mChannel, this);
+        mFilter = new IntentFilter();
+        mFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+        mFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
+        mFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
+        mFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(mReceiver, mFilter);
+    }
+
+    @Override
+    protected void onPause(){
+        super.onPause();
+        unregisterReceiver(mReceiver);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(mReceiver);
     }
 }
