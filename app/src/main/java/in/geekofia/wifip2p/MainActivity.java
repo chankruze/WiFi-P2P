@@ -9,6 +9,8 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -22,6 +24,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -48,6 +52,11 @@ public class MainActivity extends AppCompatActivity {
     String[] mDeviceNameArray;
     WifiP2pDevice[] mDeviceArray;
 
+    static final int MESSAGE_READ = 1;
+    ServerClass serverClass;
+    ClientClass clientClass;
+    Communicate communicate;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,6 +65,20 @@ public class MainActivity extends AppCompatActivity {
         initUi();
         initButtons();
     }
+
+    Handler handler = new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch (msg.what) {
+                case MESSAGE_READ:
+                    byte[] readBuffer = (byte[]) msg.obj;
+                    String tempMsg = new String(readBuffer, 0, msg.arg1);
+                    readMessages.setText(tempMsg);
+                    break;
+            }
+            return false;
+        }
+    });
 
     private void initButtons() {
         btnWifiToggle.setOnClickListener(new View.OnClickListener() {
@@ -87,6 +110,14 @@ public class MainActivity extends AppCompatActivity {
                         connectionStats.setText("Scan  Failed");
                     }
                 });
+            }
+        });
+
+        btnSend.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String mMsg = writeMessage.getText().toString();
+                communicate.write(mMsg.getBytes());
             }
         });
 
@@ -186,8 +217,12 @@ public class MainActivity extends AppCompatActivity {
 
             if (info.groupFormed && info.isGroupOwner) {
                 connectionStats.setText("Connected | Host");
+                serverClass = new ServerClass();
+                serverClass.start();
             } else {
                 connectionStats.setText("Connected | Client");
+                clientClass = new ClientClass(groupOwnerAddress);
+                clientClass.start();
             }
         }
     };
@@ -225,6 +260,8 @@ public class MainActivity extends AppCompatActivity {
             try {
                 mServerSocket = new ServerSocket(8585);
                 mSocket = mServerSocket.accept();
+                communicate = new Communicate(mSocket);
+                communicate.start();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -245,6 +282,50 @@ public class MainActivity extends AppCompatActivity {
             super.run();
             try {
                 mSocket.connect(new InetSocketAddress(mHostAddress, 8585), 1000);
+                communicate = new Communicate(mSocket);
+                communicate.start();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private class Communicate extends Thread {
+        private Socket mSocket;
+        private InputStream mInputStream;
+        private OutputStream mOutputStream;
+
+        @Override
+        public void run() {
+            super.run();
+            byte[] buffer = new byte[1024];
+            int bytes;
+
+            while (mSocket != null) {
+                try {
+                    bytes = mInputStream.read(buffer);
+                    if (bytes > 0) {
+                        handler.obtainMessage(MESSAGE_READ, bytes, -1, buffer).sendToTarget();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        public Communicate(Socket socket) {
+            mSocket = socket;
+            try {
+                mInputStream = socket.getInputStream();
+                mOutputStream = socket.getOutputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void write(byte[] bytes) {
+            try {
+                mOutputStream.write(bytes);
             } catch (IOException e) {
                 e.printStackTrace();
             }
