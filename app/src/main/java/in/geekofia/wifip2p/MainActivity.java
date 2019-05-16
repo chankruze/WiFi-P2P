@@ -21,7 +21,11 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -209,5 +213,41 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(mReceiver);
+    }
+
+    public class ServerClass extends Thread {
+        Socket mSocket;
+        ServerSocket mServerSocket;
+
+        @Override
+        public void run() {
+            super.run();
+            try {
+                mServerSocket = new ServerSocket(8585);
+                mSocket = mServerSocket.accept();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public class ClientClass extends Thread {
+        Socket mSocket;
+        String mHostAddress;
+
+        public ClientClass(InetAddress hostAddress) {
+            mHostAddress = hostAddress.getHostAddress();
+            mSocket = new Socket();
+        }
+
+        @Override
+        public void run() {
+            super.run();
+            try {
+                mSocket.connect(new InetSocketAddress(mHostAddress, 8585), 1000);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
