@@ -4,16 +4,22 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -30,16 +36,20 @@ public class MainActivity extends AppCompatActivity {
     BroadcastReceiver mReceiver;
     IntentFilter mFilter;
 
+    List<WifiP2pDevice> peers = new ArrayList<WifiP2pDevice>();
+    String[] mDeviceNameArray;
+    WifiP2pDevice[] mDeviceArray;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         initUi();
-        wifiToggleButton();
+        initButtons();
     }
 
-    private void wifiToggleButton() {
+    private void initButtons() {
         btnWifiToggle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -52,6 +62,23 @@ public class MainActivity extends AppCompatActivity {
                     btnWifiToggle.setText("Turn WiFi Off");
                     mWifiManager.setWifiEnabled(true);
                 }
+            }
+        });
+
+        btnDiscover.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mWifiP2pManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        connectionStats.setText("Scanning");
+                    }
+
+                    @Override
+                    public void onFailure(int reason) {
+                        connectionStats.setText("Scan  Failed");
+                    }
+                });
             }
         });
     }
@@ -79,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
 
         readMessages = (TextView) findViewById(R.id.readMessages);
         connectionStats = (TextView) findViewById(R.id.connectionStatus);
+        connectionStats.setText("Ready");
 
         writeMessage = (EditText) findViewById(R.id.writeMessage);
 
@@ -92,6 +120,35 @@ public class MainActivity extends AppCompatActivity {
         mFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
         mFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
     }
+
+    WifiP2pManager.PeerListListener mPeerListListener = new WifiP2pManager.PeerListListener() {
+        @Override
+        public void onPeersAvailable(WifiP2pDeviceList peerList) {
+            if(!peerList.getDeviceList().equals(peers)){
+                peers.clear();
+                peers.addAll(peerList.getDeviceList());
+
+                mDeviceNameArray = new String[peerList.getDeviceList().size()];
+                mDeviceArray = new WifiP2pDevice[peerList.getDeviceList().size()];
+
+                int index = 0;
+
+                for(WifiP2pDevice device:peerList.getDeviceList()){
+                    mDeviceNameArray[index] = device.deviceName;
+                    mDeviceArray[index] = device;
+                    index++;
+
+                }
+
+                ArrayAdapter<String> mAdapter = new ArrayAdapter<String>(getApplicationContext(), android.R.layout.simple_list_item_1, mDeviceNameArray );
+                listPeers.setAdapter(mAdapter);
+
+                if(peers.size() == 0){
+                    Toast.makeText(getApplicationContext(), "No Peers Found", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    };
 
     @Override
     protected void onResume() {

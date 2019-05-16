@@ -16,15 +16,14 @@
         android:layout_centerHorizontal="true" />
 
     <TextView
+        android:id="@+id/connectionStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/connectionStatus"
-        android:layout_toRightOf="@id/wifiToggle"
         android:layout_toLeftOf="@id/discoverPeers"
-        android:text="Online"
+        android:layout_toRightOf="@id/wifiToggle"
+        android:padding="14dp"
         android:textAlignment="center"
-        android:textAllCaps="true"
-        android:padding="14dp" />
+        android:textAllCaps="true" />
 
     <Button
         android:id="@+id/discoverPeers"
@@ -38,7 +37,7 @@
         android:layout_width="match_parent"
         android:layout_height="300dp"
         android:layout_below="@id/discoverPeers"
-        android:layout_marginTop="16dp"/>
+        android:layout_marginTop="16dp" />
 
     <TextView
         android:id="@+id/readMessages"
@@ -57,8 +56,8 @@
         android:layout_alignParentBottom="true"
         android:layout_toStartOf="@id/sendMessage"
         android:background="@drawable/edit_round"
-        android:padding="16dp"
-        android:hint="Type Your Message Here"/>
+        android:hint="Type Your Message Here"
+        android:padding="16dp" />
 
     <ImageButton
         android:id="@+id/sendMessage"
@@ -66,9 +65,9 @@
         android:layout_height="wrap_content"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
-        android:src="@drawable/ic_send"
-        android:background="@drawable/send_round"
         android:layout_marginLeft="8dp"
-        android:padding="12dp"/>
+        android:background="@drawable/send_round"
+        android:padding="12dp"
+        android:src="@drawable/ic_send" />
 
 </RelativeLayout>
