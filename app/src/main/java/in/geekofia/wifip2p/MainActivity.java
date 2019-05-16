@@ -4,12 +4,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
+import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -18,6 +21,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,12 +57,12 @@ public class MainActivity extends AppCompatActivity {
         btnWifiToggle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(mWifiManager.isWifiEnabled()){
-                    Toast.makeText(getApplicationContext(),"Turning Off WiFi ...", Toast.LENGTH_SHORT).show();
+                if (mWifiManager.isWifiEnabled()) {
+                    Toast.makeText(getApplicationContext(), "Turning Off WiFi ...", Toast.LENGTH_SHORT).show();
                     btnWifiToggle.setText("Turn WiFi On");
                     mWifiManager.setWifiEnabled(false);
-                }else {
-                    Toast.makeText(getApplicationContext(),"Turning On WiFi ...", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(getApplicationContext(), "Turning On WiFi ...", Toast.LENGTH_SHORT).show();
                     btnWifiToggle.setText("Turn WiFi Off");
                     mWifiManager.setWifiEnabled(true);
                 }
@@ -81,6 +85,27 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+
+        listPeers.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                final WifiP2pDevice device = mDeviceArray[position];
+                WifiP2pConfig config = new WifiP2pConfig();
+                config.deviceAddress = device.deviceAddress;
+
+                mWifiP2pManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(getApplicationContext(), "Connection Established\nDevice : " + device.deviceName, Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onFailure(int reason) {
+                        Toast.makeText(getApplicationContext(), "Connection Failed\nError Code : " + reason, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
     }
 
     private void initUi() {
@@ -88,11 +113,11 @@ public class MainActivity extends AppCompatActivity {
 
         btnWifiToggle = (Button) findViewById(R.id.wifiToggle);
 
-        if(mWifiManager.isWifiEnabled()){
-            Toast.makeText(getApplicationContext(),"WiFi is already enabled", Toast.LENGTH_LONG).show();
+        if (mWifiManager.isWifiEnabled()) {
+            Toast.makeText(getApplicationContext(), "WiFi is already enabled", Toast.LENGTH_LONG).show();
             btnWifiToggle.setText("Turn WiFi Off");
-        }else {
-            Toast.makeText(getApplicationContext(),"Turn On WiFi", Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(getApplicationContext(), "Turn On WiFi", Toast.LENGTH_LONG).show();
             btnWifiToggle.setText("Turn WiFi Off");
             mWifiManager.setWifiEnabled(true);
         }
@@ -124,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
     WifiP2pManager.PeerListListener mPeerListListener = new WifiP2pManager.PeerListListener() {
         @Override
         public void onPeersAvailable(WifiP2pDeviceList peerList) {
-            if(!peerList.getDeviceList().equals(peers)){
+            if (!peerList.getDeviceList().equals(peers)) {
                 peers.clear();
                 peers.addAll(peerList.getDeviceList());
 
@@ -133,19 +158,32 @@ public class MainActivity extends AppCompatActivity {
 
                 int index = 0;
 
-                for(WifiP2pDevice device:peerList.getDeviceList()){
+                for (WifiP2pDevice device : peerList.getDeviceList()) {
                     mDeviceNameArray[index] = device.deviceName;
                     mDeviceArray[index] = device;
                     index++;
 
                 }
 
-                ArrayAdapter<String> mAdapter = new ArrayAdapter<String>(getApplicationContext(), android.R.layout.simple_list_item_1, mDeviceNameArray );
+                ArrayAdapter<String> mAdapter = new ArrayAdapter<String>(getApplicationContext(), android.R.layout.simple_list_item_1, mDeviceNameArray);
                 listPeers.setAdapter(mAdapter);
 
-                if(peers.size() == 0){
+                if (peers.size() == 0) {
                     Toast.makeText(getApplicationContext(), "No Peers Found", Toast.LENGTH_SHORT).show();
                 }
+            }
+        }
+    };
+
+    WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
+        @Override
+        public void onConnectionInfoAvailable(WifiP2pInfo info) {
+            final InetAddress groupOwnerAddress = info.groupOwnerAddress;
+
+            if (info.groupFormed && info.isGroupOwner) {
+                connectionStats.setText("Connected | Host");
+            } else {
+                connectionStats.setText("Connected | Client");
             }
         }
     };
@@ -157,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onPause(){
+    protected void onPause() {
         super.onPause();
         unregisterReceiver(mReceiver);
     }
